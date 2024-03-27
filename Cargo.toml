@@ -1,0 +1,13 @@
+[package]
+name = "lndbalancer"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+config = "0.14.0"
+serde = { version = "1.0.197", features = ["derive"] }
+serde_yaml = "0.9.34"
+tokio = { version = "1.36.0", features = ["full"] }
+tonic_lnd = "0.5.1"

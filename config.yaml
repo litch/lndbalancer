@@ -1,0 +1,6 @@
+application_port: 8080
+
+sources:
+  - endpoint: https://localhost:30009
+    macaroon: /Users/litch/code/lightning-projects/lndbalancer/lnd.macaroon
+    cert: /Users/litch/code/lightning-projects/lndbalancer/lnd.cert
