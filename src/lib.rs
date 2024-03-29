@@ -3,7 +3,7 @@ use anyhow::{anyhow, Result, Error};
 use tonic_lnd::lnrpc::{ Channel };
 use std::sync::{Arc, RwLock};
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Copy, Clone)]
 pub struct Config {
     pub dynamic_fees: bool,
     pub dynamic_fee_min: i64,
@@ -36,7 +36,7 @@ thread_local! {
 }
 
 
-async fn calculate_htlc_max(channel: Channel, config: &Config) -> Result<u64, Error> {
+pub async fn calculate_htlc_max(channel: Channel, config: &Config) -> Result<u64, Error> {
     let ours: u64 = channel.local_balance as u64;
     let values = [
         1_000,
@@ -67,7 +67,7 @@ async fn calculate_htlc_max(channel: Channel, config: &Config) -> Result<u64, Er
     Ok(capped as u64)
 }
 
-async fn calculate_fee_target(channel: &Channel, config: &Config) -> Result<f64, Error> {
+pub async fn calculate_fee_target(channel: &Channel, config: &Config) -> Result<f64, Error> {
     let ours = channel.local_balance as f64;
     let total = channel.capacity as f64;
     let proportion = 1.0 - (ours / total);
