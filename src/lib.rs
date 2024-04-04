@@ -63,7 +63,11 @@ pub async fn calculate_htlc_max(channel: Channel, config: &Config) -> Result<u64
         Some(t) => t,
         None => &ours,
     };
-    let capped = (0.9 * (*t as f64)).round();
+    let mut capped = (0.9 * (*t as f64)).round();
+    // set the minimum to 1_000
+    if capped < 1_000.0 {
+        capped = 1_000.0;
+    }
     Ok(capped as u64)
 }
 
@@ -82,14 +86,12 @@ pub async fn calculate_fee_target(channel: &Channel, config: &Config) -> Result<
 
     println!("Target Calculation (Ours: {}, Total: {}, Proportion: {}, Range: {})", ours, total, proportion, range);
 
-    let mut fee = 0.0;
-
     let parts = (proportion / interval_size).round() as f64;
     println!("Num Parts: {}, Proportion: {}, Interval Size: {}", parts, proportion, interval_size);
 
     let fee = min + ((range / config.dynamic_fee_intervals as f64) * parts);
 
-    Ok(fee)
+    Ok(fee / 1000000.0)
 
     // Ok(8 as f64)
 }

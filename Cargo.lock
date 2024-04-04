@@ -619,6 +619,7 @@ dependencies = [
  "config",
  "features",
  "futures",
+ "hex",
  "serde",
  "serde_yaml",
  "tokio",

@@ -10,6 +10,7 @@ anyhow = "1.0.81"
 config = "0.14.0"
 features = "0.10.0"
 futures = "0.3.30"
+hex = "0.4.3"
 serde = { version = "1.0.197", features = ["derive"] }
 serde_yaml = "0.9.34"
 tokio = { version = "1.36.0", features = ["full"] }
