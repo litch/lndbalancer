@@ -1,14 +1,14 @@
 // config file is at config/config.toml
 
-use std::fmt;
-use serde::{Deserialize, Serialize};
+
+
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use config::{Config, Source};
-use tonic_lnd;
+
 
 use lndbalancer::{calculate_htlc_max, calculate_fee_target};
-use lndbalancer;
+
 mod config;
 
 use futures::stream::{self, StreamExt};
@@ -22,7 +22,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let sources: Vec<Source> = config.sources;
 
     // // Connecting to LND requires only address, cert file, and macaroon file
-    let lnd = sources.get(0).unwrap().clone();
+    let lnd = sources.first().unwrap().clone();
     let endpoint = lnd.endpoint.to_string();
     let macaroon = lnd.macaroon.to_string();
     let cert = lnd.cert.to_string();
@@ -100,7 +100,7 @@ async fn process_channels(client: Arc<Mutex<tonic_lnd::Client>>, channels: Vec<t
 
             println!("Target: {:?}", fee_rate);
             println!("HTLC Max: {:?}", htlc_max);
-            let split_channel_point: Vec<&str> = c.channel_point.split(":").collect();
+            let split_channel_point: Vec<&str> = c.channel_point.split(':').collect();
 
             // Directly accessing the elements since we know the format
             let funding_txid_str = split_channel_point[0]; // This is already &str, no need to clone and unwrap
@@ -114,7 +114,7 @@ async fn process_channels(client: Arc<Mutex<tonic_lnd::Client>>, channels: Vec<t
             let request = tonic_lnd::lnrpc::PolicyUpdateRequest {
                 scope: Some(tonic_lnd::lnrpc::policy_update_request::Scope::ChanPoint(channel_point)),
                 base_fee_msat: 1000,
-                fee_rate: fee_rate,
+                fee_rate,
                 time_lock_delta: 144,
                 max_htlc_msat: htlc_max,
 

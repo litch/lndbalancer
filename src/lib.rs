@@ -1,9 +1,9 @@
-use anyhow::{anyhow, Result, Error};
+use anyhow::{Result, Error};
 
-use tonic_lnd::lnrpc::{ Channel };
+use tonic_lnd::lnrpc::Channel;
 use std::sync::{Arc, RwLock};
 
-#[derive(Default, Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct Config {
     pub dynamic_fees: bool,
     pub dynamic_fee_min: i64,
@@ -12,8 +12,8 @@ pub struct Config {
     pub dynamic_fee_update_frequency: i64,
 }
 
-impl Config {
-    pub fn default() -> Config {
+impl Default for Config {
+    fn default() -> Self {
         Config {
             dynamic_fees: false,
             dynamic_fee_min: 0,
@@ -22,6 +22,10 @@ impl Config {
             dynamic_fee_update_frequency: 14400,
         }
     }
+}
+
+impl Config {
+
 
     pub fn current() -> Arc<Config> {
         CURRENT_CONFIG.with(|c| c.read().unwrap().clone())
@@ -36,7 +40,7 @@ thread_local! {
 }
 
 
-pub async fn calculate_htlc_max(channel: Channel, config: &Config) -> Result<u64, Error> {
+pub async fn calculate_htlc_max(channel: Channel, _config: &Config) -> Result<u64, Error> {
     let ours: u64 = channel.local_balance as u64;
     let values = [
         1_000,
@@ -83,10 +87,9 @@ pub async fn calculate_fee_target(channel: &Channel, config: &Config) -> Result<
 
     let interval_size = (1.0 / config.dynamic_fee_intervals as f32) as f64;
 
-
     println!("Target Calculation (Ours: {}, Total: {}, Proportion: {}, Range: {})", ours, total, proportion, range);
 
-    let parts = (proportion / interval_size).round() as f64;
+    let parts = (proportion / interval_size).round();
     println!("Num Parts: {}, Proportion: {}, Interval Size: {}", parts, proportion, interval_size);
 
     let fee = min + ((range / config.dynamic_fee_intervals as f64) * parts);
