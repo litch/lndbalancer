@@ -1631,6 +1631,7 @@ dependencies = [
 [[package]]
 name = "tonic_lnd"
 version = "0.5.1"
+source = "git+https://github.com/litch/tonic_lnd?branch=use-web-pki-optionally#7446a1c75878b7b6afa6803a0b2867129f99f290"
 dependencies = [
  "hex",
  "prost 0.9.0",
