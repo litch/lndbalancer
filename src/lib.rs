@@ -1,43 +1,10 @@
 use anyhow::{Result, Error};
 
+use crate::config::Config;
 use tonic_lnd::lnrpc::Channel;
-use std::sync::{Arc, RwLock};
 
-#[derive(Debug, Copy, Clone)]
-pub struct Config {
-    pub dynamic_fees: bool,
-    pub dynamic_fee_min: i64,
-    pub dynamic_fee_max: i64,
-    pub dynamic_fee_intervals: i8,
-    pub dynamic_fee_update_frequency: i64,
-}
+pub mod config;
 
-impl Default for Config {
-    fn default() -> Self {
-        Config {
-            dynamic_fees: false,
-            dynamic_fee_min: 0,
-            dynamic_fee_max: 1000,
-            dynamic_fee_intervals: 5,
-            dynamic_fee_update_frequency: 14400,
-        }
-    }
-}
-
-impl Config {
-
-
-    pub fn current() -> Arc<Config> {
-        CURRENT_CONFIG.with(|c| c.read().unwrap().clone())
-    }
-    pub fn make_current(self) {
-        CURRENT_CONFIG.with(|c| *c.write().unwrap() = Arc::new(self))
-    }
-}
-
-thread_local! {
-    static CURRENT_CONFIG: RwLock<Arc<Config>> = RwLock::new(Default::default());
-}
 
 
 pub async fn calculate_htlc_max(channel: Channel, _config: &Config) -> Result<u64, Error> {
@@ -118,6 +85,7 @@ mod tests {
             dynamic_fee_intervals: 5,
             dynamic_fee_min: 100,
             dynamic_fee_max: 500,
+            ..Default::default()
         };
 
         let test_cases = vec![
@@ -148,6 +116,7 @@ mod tests {
             dynamic_fee_intervals: 5,
             dynamic_fee_min: 10,
             dynamic_fee_max: 500,
+            ..Default::default()
         };
 
         let test_cases = vec![

@@ -1,7 +1,6 @@
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use futures::stream::{self, StreamExt};
-use config::{Config, Source};
 use warp::Filter;
 
 use lndbalancer::{calculate_htlc_max, calculate_fee_target};
@@ -10,33 +9,29 @@ mod config;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let config = config::Config::current();
+
     let health_route = warp::path!("health").map(|| warp::reply::json(&"OK"));
-    tokio::spawn(warp::serve(health_route).run(([127, 0, 0, 1], 3030)));
+    let port = config.application_port;
+
+    tokio::spawn(warp::serve(health_route).run(([127, 0, 0, 1], port)));
 
     loop {
         process_lnd().await?;
-        tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
+        tokio::time::sleep(tokio::time::Duration::from_secs(config.dynamic_fee_update_frequency)).await;
     }
 
 }
 
 async fn process_lnd() -> Result<(), Box<dyn std::error::Error>> {
-    let settings = Config::new();
-
-    let sources: Vec<Source> = settings.sources;
+    let settings = lndbalancer::config::Config::new();
+    let settings_arced = Arc::new(settings.clone());
+    let sources: Vec<lndbalancer::config::Source> = settings.sources;
     let lnd = sources.first().unwrap().clone();
     let endpoint = lnd.endpoint.to_string();
     let macaroon = lnd.macaroon.to_string();
     let cert = lnd.cert.to_string();
     let client_result = tonic_lnd::connect(endpoint, cert, macaroon).await?;
-
-    let balancer_config = lndbalancer::Config {
-        dynamic_fees: true,
-        dynamic_fee_update_frequency: 100,
-        dynamic_fee_intervals: 5,
-        dynamic_fee_min: 100,
-        dynamic_fee_max: 1000,
-    };
 
     let client = Arc::new(Mutex::new(client_result)); // client_result is directly used with `?` above
 
@@ -53,13 +48,13 @@ async fn process_lnd() -> Result<(), Box<dyn std::error::Error>> {
     drop(client_guard); // Drop the client to avoid deadlock (since we are not using it anymore
 
 
-    process_channels(client, channels.channels, balancer_config).await;
+    process_channels(client, channels.channels, settings_arced).await;
     Ok(())
 }
 
 
 
-async fn process_channels(client: Arc<Mutex<tonic_lnd::Client>>, channels: Vec<tonic_lnd::lnrpc::Channel>, balancer_config: lndbalancer::Config) {
+async fn process_channels(client: Arc<Mutex<tonic_lnd::Client>>, channels: Vec<tonic_lnd::lnrpc::Channel>, balancer_config: Arc<lndbalancer::config::Config>) {
     // let channels = channels.into_inner().channels;
     println!("Channels: {:?}", channels.len());
     let client = Arc::new(client); // Wrap the client in an Arc
@@ -70,11 +65,14 @@ async fn process_channels(client: Arc<Mutex<tonic_lnd::Client>>, channels: Vec<t
     // Asynchronously process each channel
     channels_stream.for_each_concurrent(None, move |c| {
         let client_clone = Arc::clone(&client); // Clone the Arc, not the client
+        let config_clone = Arc::clone(&balancer_config); // Clone the Arc, not the config
         async move {
             println!("{:?}", c);
             println!("-----------------");
-            let fee_rate = calculate_fee_target(&c, &balancer_config).await.unwrap();
-            let htlc_max = calculate_htlc_max(c.clone(), &balancer_config).await.unwrap();
+
+            let config = config_clone.as_ref();
+            let fee_rate = calculate_fee_target(&c, &config).await.unwrap();
+            let htlc_max = calculate_htlc_max(c.clone(), &config).await.unwrap();
 
 
             println!("Target: {:?}", fee_rate);

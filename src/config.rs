@@ -1,8 +1,9 @@
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use std::sync::{Arc, RwLock};
 
 #[derive(Deserialize, Clone, Serialize)]
-pub(crate) struct Source {
+pub struct Source {
     pub endpoint: String,
     pub macaroon: String,
     pub cert: String,
@@ -21,7 +22,7 @@ impl fmt::Debug for Source {
 }
 
 #[derive(Deserialize, Debug, Clone, Serialize)]
-pub(crate) struct Config {
+pub struct Config {
     pub application_port: u16,
     pub sources: Vec<Source>,
     pub dynamic_fees: bool,
@@ -67,6 +68,23 @@ impl Default for Config {
         }
     }
 }
+
+
+impl Config {
+
+
+    pub fn current() -> Arc<Config> {
+        CURRENT_CONFIG.with(|c| c.read().unwrap().clone())
+    }
+    pub fn make_current(self) {
+        CURRENT_CONFIG.with(|c| *c.write().unwrap() = Arc::new(self))
+    }
+}
+
+thread_local! {
+    static CURRENT_CONFIG: RwLock<Arc<Config>> = RwLock::new(Default::default());
+}
+
 
 #[cfg(test)]
 mod tests {
