@@ -71,8 +71,6 @@ impl Default for Config {
 
 
 impl Config {
-
-
     pub fn current() -> Arc<Config> {
         CURRENT_CONFIG.with(|c| c.read().unwrap().clone())
     }

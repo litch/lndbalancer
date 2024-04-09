@@ -2,6 +2,8 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use futures::stream::{self, StreamExt};
 use warp::Filter;
+use tracing_subscriber;
+use tracing::{info, debug, trace};
 
 use lndbalancer::{calculate_htlc_max, calculate_fee_target};
 
@@ -9,7 +11,14 @@ mod config;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    tracing_subscriber::fmt::init();
+    info!("Starting LND Balancer");
+    let loaded_config = config::Config::new();
+    loaded_config.make_current();
+
     let config = config::Config::current();
+
+    info!("Config: {:?}", config);
 
     let health_route = warp::path!("health").map(|| warp::reply::json(&"OK"));
     let port = config.application_port;
@@ -17,6 +26,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tokio::spawn(warp::serve(health_route).run(([127, 0, 0, 1], port)));
 
     loop {
+
         process_lnd().await?;
         tokio::time::sleep(tokio::time::Duration::from_secs(config.dynamic_fee_update_frequency)).await;
     }
@@ -24,9 +34,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 async fn process_lnd() -> Result<(), Box<dyn std::error::Error>> {
-    let settings = lndbalancer::config::Config::new();
-    let settings_arced = Arc::new(settings.clone());
-    let sources: Vec<lndbalancer::config::Source> = settings.sources;
+    let settings = config::Config::current();
+
+    let sources: Vec<config::Source> = settings.sources.clone();
+    if sources.is_empty() {
+        panic!("No sources found in the configuration");
+    }
     let lnd = sources.first().unwrap().clone();
     let endpoint = lnd.endpoint.to_string();
     let macaroon = lnd.macaroon.to_string();
@@ -48,15 +61,14 @@ async fn process_lnd() -> Result<(), Box<dyn std::error::Error>> {
     drop(client_guard); // Drop the client to avoid deadlock (since we are not using it anymore
 
 
-    process_channels(client, channels.channels, settings_arced).await;
+    process_channels(client, channels.channels).await;
     Ok(())
 }
 
 
 
-async fn process_channels(client: Arc<Mutex<tonic_lnd::Client>>, channels: Vec<tonic_lnd::lnrpc::Channel>, balancer_config: Arc<lndbalancer::config::Config>) {
-    // let channels = channels.into_inner().channels;
-    println!("Channels: {:?}", channels.len());
+async fn process_channels(client: Arc<Mutex<tonic_lnd::Client>>, channels: Vec<tonic_lnd::lnrpc::Channel>) {
+    debug!("Channels: {:?}", channels.len());
     let client = Arc::new(client); // Wrap the client in an Arc
 
     // Convert the iterator to a stream
@@ -65,18 +77,16 @@ async fn process_channels(client: Arc<Mutex<tonic_lnd::Client>>, channels: Vec<t
     // Asynchronously process each channel
     channels_stream.for_each_concurrent(None, move |c| {
         let client_clone = Arc::clone(&client); // Clone the Arc, not the client
-        let config_clone = Arc::clone(&balancer_config); // Clone the Arc, not the config
         async move {
-            println!("{:?}", c);
-            println!("-----------------");
+            debug!("Processing Channel: {:?}", c.channel_point);
+            trace!("{:?}", c);
 
-            let config = config_clone.as_ref();
+            let config = lndbalancer::config::Config::current();
             let fee_rate = calculate_fee_target(&c, &config).await.unwrap();
             let htlc_max = calculate_htlc_max(c.clone(), &config).await.unwrap();
 
-
-            println!("Target: {:?}", fee_rate);
-            println!("HTLC Max: {:?}", htlc_max);
+            debug!("Target: {:?}", fee_rate);
+            debug!("HTLC Max: {:?}", htlc_max);
             let split_channel_point: Vec<&str> = c.channel_point.split(':').collect();
 
             // Directly accessing the elements since we know the format
@@ -99,9 +109,9 @@ async fn process_channels(client: Arc<Mutex<tonic_lnd::Client>>, channels: Vec<t
             };
 
             let result = client_clone.lock().await.lightning().update_channel_policy(request).await.expect("failed to update channel policy");
-            println!("{:?}", result);
+            debug!("{:?}", result);
         }
 
     }).await; // Wait for all asynchronous operations to complete
-
+    info!("All channels processed");
 }

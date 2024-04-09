@@ -2,10 +2,8 @@ use anyhow::{Result, Error};
 
 use crate::config::Config;
 use tonic_lnd::lnrpc::Channel;
-
+use tracing::{info, debug, trace};
 pub mod config;
-
-
 
 pub async fn calculate_htlc_max(channel: Channel, _config: &Config) -> Result<u64, Error> {
     let ours: u64 = channel.local_balance as u64;
@@ -54,10 +52,10 @@ pub async fn calculate_fee_target(channel: &Channel, config: &Config) -> Result<
 
     let interval_size = (1.0 / config.dynamic_fee_intervals as f32) as f64;
 
-    println!("Target Calculation (Ours: {}, Total: {}, Proportion: {}, Range: {})", ours, total, proportion, range);
+    debug!("Target Calculation (Ours: {}, Total: {}, Proportion: {}, Range: {})", ours, total, proportion, range);
 
     let parts = (proportion / interval_size).round();
-    println!("Num Parts: {}, Proportion: {}, Interval Size: {}", parts, proportion, interval_size);
+    debug!("Num Parts: {}, Proportion: {}, Interval Size: {}", parts, proportion, interval_size);
 
     let fee = min + ((range / config.dynamic_fee_intervals as f64) * parts);
 
