@@ -3,3 +3,5 @@ lnd.cert
 lnd.macaroon
 *.cert*
 *.macaroon*
+config.yaml
+

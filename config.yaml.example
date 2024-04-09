@@ -7,6 +7,6 @@ dynamic_fee_max: 1000
 
 
 sources:
-  - endpoint: https://this-is-something.u.staging.voltageapp.io:10009
+  - endpoint: https://your-endpoint:10009
     macaroon: /Users/litch/code/lightning-projects/lndbalancer/mn-admin.macaroon
     cert: /Users/litch/code/lightning-projects/lndbalancer/nonsense.cert
