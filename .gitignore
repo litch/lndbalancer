@@ -1,3 +1,5 @@
 /target
 lnd.cert
 lnd.macaroon
+*.cert*
+*.macaroon*

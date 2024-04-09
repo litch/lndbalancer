@@ -14,4 +14,4 @@ hex = "0.4.3"
 serde = { version = "1.0.197", features = ["derive"] }
 serde_yaml = "0.9.34"
 tokio = { version = "1.36.0", features = ["full"] }
-tonic_lnd = "0.5.1"
+tonic_lnd = { path = "../../tonic_lnd" }
