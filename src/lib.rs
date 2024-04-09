@@ -1,8 +1,8 @@
-use anyhow::{Result, Error};
+use anyhow::{Error, Result};
 
 use crate::config::Config;
 use tonic_lnd::lnrpc::Channel;
-use tracing::{info, debug, trace};
+use tracing::debug;
 pub mod config;
 
 pub async fn calculate_htlc_max(channel: Channel, _config: &Config) -> Result<u64, Error> {
@@ -52,10 +52,16 @@ pub async fn calculate_fee_target(channel: &Channel, config: &Config) -> Result<
 
     let interval_size = (1.0 / config.dynamic_fee_intervals as f32) as f64;
 
-    debug!("Target Calculation (Ours: {}, Total: {}, Proportion: {}, Range: {})", ours, total, proportion, range);
+    debug!(
+        "Target Calculation (Ours: {}, Total: {}, Proportion: {}, Range: {})",
+        ours, total, proportion, range
+    );
 
     let parts = (proportion / interval_size).round();
-    debug!("Num Parts: {}, Proportion: {}, Interval Size: {}", parts, proportion, interval_size);
+    debug!(
+        "Num Parts: {}, Proportion: {}, Interval Size: {}",
+        parts, proportion, interval_size
+    );
 
     let fee = min + ((range / config.dynamic_fee_intervals as f64) * parts);
 
@@ -67,7 +73,6 @@ pub async fn calculate_fee_target(channel: &Channel, config: &Config) -> Result<
 #[cfg(test)]
 mod tests {
     use super::*;
-
 
     #[tokio::test]
     async fn config_default() {
@@ -93,7 +98,6 @@ mod tests {
             (12_630_110_000, 9_000_000_000),
         ];
 
-
         for (ours, target) in test_cases {
             let c = Channel {
                 local_balance: ours,
@@ -104,7 +108,6 @@ mod tests {
             assert_eq!(calc, target as u64);
         }
     }
-
 
     #[tokio::test]
     async fn calculate_fee_target_for_channels() {
@@ -132,14 +135,10 @@ mod tests {
                 local_balance: ours,
                 capacity: channel_size,
                 ..Default::default()
-
             };
 
             let target = calculate_fee_target(&c, &config).await.unwrap();
             assert_eq!(target, fee)
         }
     }
-
-
-
 }

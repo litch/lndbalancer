@@ -14,9 +14,7 @@ impl fmt::Debug for Source {
         write!(
             f,
             "Source {{ endpoint: {:?}, macaroon: {:?}, cert: {:?} }}",
-            self.endpoint,
-            self.macaroon,
-            self.cert
+            self.endpoint, self.macaroon, self.cert
         )
     }
 }
@@ -30,7 +28,6 @@ pub struct Config {
     pub dynamic_fee_intervals: u64,
     pub dynamic_fee_min: u64,
     pub dynamic_fee_max: u64,
-
 }
 
 impl Config {
@@ -64,11 +61,9 @@ impl Default for Config {
             dynamic_fee_intervals: 5,
             dynamic_fee_min: 100,
             dynamic_fee_max: 1000,
-
         }
     }
 }
-
 
 impl Config {
     pub fn current() -> Arc<Config> {
@@ -82,7 +77,6 @@ impl Config {
 thread_local! {
     static CURRENT_CONFIG: RwLock<Arc<Config>> = RwLock::new(Default::default());
 }
-
 
 #[cfg(test)]
 mod tests {
