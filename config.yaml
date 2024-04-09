@@ -1,4 +1,10 @@
 application_port: 8080
+dynamic_fees: true
+dynamic_fee_update_frequency: 100
+dynamic_fee_intervals: 5
+dynamic_fee_min: 100
+dynamic_fee_max: 1000
+
 
 sources:
   - endpoint: https://this-is-something.u.staging.voltageapp.io:10009

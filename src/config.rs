@@ -24,6 +24,12 @@ impl fmt::Debug for Source {
 pub(crate) struct Config {
     pub application_port: u16,
     pub sources: Vec<Source>,
+    pub dynamic_fees: bool,
+    pub dynamic_fee_update_frequency: u64,
+    pub dynamic_fee_intervals: u64,
+    pub dynamic_fee_min: u64,
+    pub dynamic_fee_max: u64,
+
 }
 
 impl Config {
@@ -52,6 +58,12 @@ impl Default for Config {
         Config {
             application_port: 8080,
             sources: vec![],
+            dynamic_fees: true,
+            dynamic_fee_update_frequency: 100,
+            dynamic_fee_intervals: 5,
+            dynamic_fee_min: 100,
+            dynamic_fee_max: 1000,
+
         }
     }
 }

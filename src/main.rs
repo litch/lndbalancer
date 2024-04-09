@@ -1,34 +1,33 @@
-// config file is at config/config.toml
-
-
-
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use futures::stream::{self, StreamExt};
 use config::{Config, Source};
-
+use warp::Filter;
 
 use lndbalancer::{calculate_htlc_max, calculate_fee_target};
 
 mod config;
 
-use futures::stream::{self, StreamExt};
-
-
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Load the configuration
-    let config = Config::new();
+    let health_route = warp::path!("health").map(|| warp::reply::json(&"OK"));
+    tokio::spawn(warp::serve(health_route).run(([127, 0, 0, 1], 3030)));
 
-    let sources: Vec<Source> = config.sources;
+    loop {
+        process_lnd().await?;
+        tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
+    }
 
-    // // Connecting to LND requires only address, cert file, and macaroon file
+}
+
+async fn process_lnd() -> Result<(), Box<dyn std::error::Error>> {
+    let settings = Config::new();
+
+    let sources: Vec<Source> = settings.sources;
     let lnd = sources.first().unwrap().clone();
     let endpoint = lnd.endpoint.to_string();
     let macaroon = lnd.macaroon.to_string();
     let cert = lnd.cert.to_string();
-    println!("endpoint: {:?}", endpoint);
-    println!("cert: {:?}", cert);
-
     let client_result = tonic_lnd::connect(endpoint, cert, macaroon).await?;
 
     let balancer_config = lndbalancer::Config {
@@ -39,18 +38,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         dynamic_fee_max: 1000,
     };
 
-
     let client = Arc::new(Mutex::new(client_result)); // client_result is directly used with `?` above
-
-
-    // let info = client
-    //     .lightning()
-    //     // All calls require at least empty parameter
-    //     .get_info(tonic_lnd::lnrpc::GetInfoRequest {})
-    //     .await
-    //     .expect("failed to get info");
-
-
 
     let mut client_guard = client.lock().await; // Lock the client to avoid deadlock
     let channels = client_guard
@@ -64,21 +52,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     drop(client_guard); // Drop the client to avoid deadlock (since we are not using it anymore
 
-    println!("Before calling process_channels");
+
     process_channels(client, channels.channels, balancer_config).await;
-    println!("After calling process_channels");
-
-
-
-    // Print the response
-
-
-
-    // We only print it here, note that in real-life code you may want to call `.into_inner()` on
-    // the response to get the message.
-    // println!("{:#?}", info);
     Ok(())
 }
+
+
 
 async fn process_channels(client: Arc<Mutex<tonic_lnd::Client>>, channels: Vec<tonic_lnd::lnrpc::Channel>, balancer_config: lndbalancer::Config) {
     // let channels = channels.into_inner().channels;
